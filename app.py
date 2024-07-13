@@ -12,9 +12,9 @@ from app.routers import conversation, document
 app = FastAPI()
 
 app.include_router(conversation.router)
-app.include_router(document.router)
+# app.include_router(document.router)
 
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)  # log_level="critical"
+    uvicorn.run(app, host="0.0.0.0", port=8111)  # log_level="critical"

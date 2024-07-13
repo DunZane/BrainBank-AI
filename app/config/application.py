@@ -11,9 +11,9 @@ class LogSettings(BaseSettings):
 
 class Settings(BaseSettings):
     # elasticsearch setting
-    ES_URL: str = "http://127.0.0.1:9200"
-    ES_PWD: str = "brainbank_pwd"
-    CHAT_HISTORY_INDEX: str = "conversation-history"
+    ES_URL: str = env.str("ES_URL", "http://localhost:9200")
+    ES_PWD: str = env.str("ES_PWD", "brainbank_pwd")
+    CHAT_HISTORY_INDEX: str = env.str("CHAT_HISTORY_INDEX", "conversation-history")
 
 
 settings = Settings()

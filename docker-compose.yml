@@ -1,0 +1,104 @@
+version: '3.3'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: brainbank_pwd
+    volumes:
+      - ~/mnt/mysql/log:/var/log/mysql
+      - ~/mnt/mysql/data:/var/lib/mysql
+      - ~/mnt/mysql/conf.d:/etc/mysql/conf.d
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3306:3306"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.10
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      - "discovery.type=single-node"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "TZ=Asia/Shanghai"
+      - "ELASTIC_PASSWORD=brainbank_pwd"
+    volumes:
+      - ~/mnt/es/data:/usr/share/elasticsearch/data
+      - ~/mnt/es/plugins:/usr/share/elasticsearch/plugins
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+  redis:
+    image: redis:7.0
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "brainbank_pwd"]
+    volumes:
+      - ~/mnt/redis/etc:/usr/local/etc
+      - ~/mnt/redis/data:/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "6379:6379"
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.4
+    container_name: etcd
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    command: >
+      /usr/local/bin/etcd
+      --name s1
+      --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://0.0.0.0:2379
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-advertise-peer-urls http://0.0.0.0:2380
+      --initial-cluster s1=http://0.0.0.0:2380
+      --initial-cluster-token tkn
+      --initial-cluster-state new
+
+  brainbank-ai:
+    image: ccgkk/brainbank-ai:v1
+    container_name: brainbank-ai
+    restart: unless-stopped
+    environment:
+      ES_URL: http://elasticsearch:9200
+      ES_PWD: brainbank_pwd
+      CHAT_HISTORY_INDEX: conversation-history
+      OPENAI_API_KEY: sk-zcFbFTpmRMwEjSQaD0152b150c114f7c8cE8AbE20e31C355
+      OPENAI_BASE_URL: https://api.xiaoai.plus/v1
+    ports:
+      - "8111:8111"
+    depends_on:
+      - elasticsearch
+
+  brainbank-chat-rpc:
+    image: ccgkk/brainbank-chat-rpc:v1
+    container_name: brainbank-chat-rpc
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      - elasticsearch
+      - mysql
+      - redis
+      - etcd
+      - brainbank-ai
+
+  brainbank-chat-api:
+    image: ccgkk/brainbank-chat-api:v1
+    container_name: brainbank-chat-api
+    restart: unless-stopped
+    ports:
+      - "8889:8889"
+    depends_on:
+      - etcd
+
+networks:
+  default:
+    driver: bridge

@@ -1,0 +1,11 @@
+environs==11.0.0
+fastapi==0.111.0
+langchain==0.2.6
+langchain_community==0.2.6
+langchain_core==0.2.10
+langchain_elasticsearch==0.2.2
+langchain_openai==0.1.13
+loguru==0.7.2
+pydantic==2.8.0
+pydantic_settings==2.3.4
+uvicorn==0.30.1
