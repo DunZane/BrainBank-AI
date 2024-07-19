@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package rpc;
+
+// Represents the request to generate text using an LLM model.
+message GenerationRequest {
+  // The prompt to condition the generation on.
+  string prompt = 1;
+
+  // The maximum length of the generated text.
+  int32 max_length = 2;
+
+  // Controls randomness in token sampling; higher values make output more random.
+  float temperature = 3;
+
+  // Controls diversity via nucleus sampling; lower values select from fewer tokens.
+  float top_p = 4;
+
+  // Controls diversity via top-k sampling; higher values select from more tokens.
+  int32 top_k = 5;
+}
+
+// Represents a chunk of generated text from an LLM model.
+message GenerationChunk {
+  // The generated text chunk.
+  string content = 1;
+
+  // Optional metadata about the generation process.
+  repeated GenerationMetadata metadata = 2;
+}
+
+// Represents the response from generating text using an LLM model.
+message GenerationResponse {
+  // The generated text.
+  string content = 1;
+
+  // Optional metadata about the generation process.
+  repeated GenerationMetadata metadata = 2;
+}
+
+// Metadata associated with the generation process.
+message GenerationMetadata {
+  // Type of metadata, e.g., "token_count", "execution_time".
+  string type = 1;
+
+  // Value of the metadata.
+  string value = 2;
+}
+
+// Service for generating text based on prompts using an LLM model.
+service GenerationService {
+  // Generation generates text given a prompt and parameters.
+  rpc Generation(GenerationRequest) returns (GenerationResponse);
+
+  // GenerationStream generates text given a prompt and parameters and returns it as a stream of chunks.
+  rpc GenerationStream(GenerationRequest) returns (stream GenerationChunk);
+}
