@@ -3,20 +3,17 @@ import os
 from app import logger
 from internal.chatglm import Chatglm6b
 
+
+from langchain_community.graphs import Neo4jGraph
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
 from langchain_community.chat_models import BedrockChat
-
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.embeddings import BedrockEmbeddings
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 from langchain_community.vectorstores import Neo4jVector
-from langchain_qdrant import Qdrant
-
-from langchain_community.graphs import Neo4jGraph
 
 
 def load_llm(llm_config: dict):
@@ -100,23 +97,30 @@ def load_embedding():
     return embeddings, dimension
 
 
-def load_kg(embeddings, query):
+def load_neo4j_vector():
+    NEO4J_BASE_URI = os.getenv("NEO4J_BASE_URI")
+    NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
+    NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+    NEO4J_DATABASE = os.getenv("NEO4J_DATABASE")
+    NEO4J_INDEX_NAME = os.getenv("NEO4J_INDEX_NAME")
+
+    # load embedding
+    embeddings, _ = load_embedding()
+
     neo4jVector = Neo4jVector.from_existing_index(
         embedding=embeddings,
-        url=os.getenv("NEO4J_URI"),
-        username=os.getenv("NEO4J_USERNAME"),
-        password=os.getenv("NEO4J_PASSWORD"),
-        database="neo4j",  # neo4j by default
-        index_name="stackoverflow",  # vector by default
-        text_node_property="body",  # text by default
-        retrieval_query=query,
+        url=NEO4J_BASE_URI,
+        username=NEO4J_USERNAME,
+        password=NEO4J_PASSWORD,
+        database=NEO4J_DATABASE,  # neo4j by default
+        index_name=NEO4J_INDEX_NAME,  # vector by default
     )
     return neo4jVector
 
 
 def load_neo4j_graph():
     # load params from env
-    url = os.getenv("NEO4J_URI")
+    url = os.getenv("NEO4J_BASE_URI")
     username = os.getenv("NEO4J_USERNAME")
     password = os.getenv("NEO4J_PASSWORD")
 
@@ -139,17 +143,4 @@ def load_neo4j_graph():
     return neo4j_graph
 
 
-def load_qdrant_client():
-    # load params from env
-    QDRANT_BASE_URL = os.getenv("QDRANT_BASE_URL")
-    QDRANT_COLLECTION_NAME = os.getenv("QDRANT_COLLECTION_NAME")
 
-    # load embedding
-    embeddings, _ = load_embedding()
-
-    qdrant = Qdrant.from_existing_collection(
-        embedding=embeddings,
-        collection_name=QDRANT_COLLECTION_NAME,
-        url=QDRANT_BASE_URL,)
-
-    return qdrant

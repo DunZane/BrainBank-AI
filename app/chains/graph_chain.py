@@ -1,24 +1,28 @@
-from langchain_core.runnables import RunnableWithMessageHistory
-
-from app.chains.init import load_llm, load_embedding, load_kg, load_neo4j_graph
+from typing import Dict, Any
 
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate
 )
-from langchain.chains.qa_with_sources import load_qa_with_sources_chain
-from langchain.chains import RetrievalQAWithSourcesChain
+from langchain_core.runnables import (
+    RunnableWithMessageHistory,
+    RunnablePassthrough,
+    RunnableParallel
+)
 
-from app.routers import get_session_history
+from app.chains.retriever.neo4j import Neo4jRetriever
+from app.chains.init import load_llm, load_neo4j_graph, load_embedding
+from app.chains.history import get_session_history
 
 
-def build(chain_config: {}):
+def build(chain_config: Dict[str, Any], metadata=Dict[str, Any]):
+    # load embedding
+    embedding, _ = load_embedding()
     # Initialize LLM with the given configuration
     llm_config = {"temperature": chain_config.get("temperature", 0.7)}  # Set a default value if not provided
     llm = load_llm(llm_config)
 
-    embeddings, _ = load_embedding()
     general_system_template = """ 
        Use the following pieces of context to answer the question at the end.
        The context contains question-answer pairs and their links from Stackoverflow.
@@ -36,45 +40,31 @@ def build(chain_config: {}):
        Generate concise answers with references sources section of links to 
        relevant StackOverflow questions only at the end of the answer.
        """
-    general_user_template = "Question:```{question}```"
+    general_user_template = "Question:```{user_input}```"
     messages = [
         SystemMessagePromptTemplate.from_template(general_system_template),
         HumanMessagePromptTemplate.from_template(general_user_template),
     ]
     qa_prompt = ChatPromptTemplate.from_messages(messages)
 
-    qa_chain = load_qa_with_sources_chain(
-        llm,
-        chain_type="stuff",
-        prompt=qa_prompt,
+    retriever = Neo4jRetriever()
+
+    chain = (
+            RunnableParallel({"summaries": retriever,
+                              "user_input": RunnablePassthrough(),
+                              "history": RunnablePassthrough()})
+            | qa_prompt
+            | llm
     )
 
-    # Vector + Knowledge Graph response
-    query = ('\n'
-             '    WITH node AS question, score AS similarity\n'
-             '       CALL  { with question\n'
-             '           MATCH (question)<-[:ANSWERS]-(answer)\n'
-             '           WITH answer\n'
-             '           ORDER BY answer.is_accepted DESC, answer.score DESC\n'
-             '           WITH collect(answer)[..2] as answers\n'
-             '           RETURN reduce(str=\'\', answer IN answers | str + \n'
-             '                   \'\n### Answer (Accepted: \'+ answer.is_accepted +\n'
-             '                   \' Score: \' + answer.score+ \'): \'+  answer.body + \'\n\') as answerTexts\n'
-             '       } \n'
-             '       RETURN \'##Question: \' + question.title + \'\n\' + question.body + \'\n\' \n'
-             '           + answerTexts AS text, similarity as score, {source: question.link} AS metadata\n'
-             '       ORDER BY similarity ASC // so that best answers are the last\n'
-             '    ')
-    kg = load_kg(embeddings, query)
-
-    kg_qa = RetrievalQAWithSourcesChain(
-        combine_documents_chain=qa_chain,
-        retriever=kg.as_retriever(search_kwargs={"k": 2}),
-        reduce_k_below_max_tokens=False,
-        max_tokens_limit=3375,
-        memory=get_session_history
+    chain_with_history = RunnableWithMessageHistory(
+        chain,
+        get_session_history,
+        input_messages_key="user_input",
+        history_messages_key="history",
     )
-    return kg_qa
+
+    return chain_with_history
 
 
 def build_in_ticket(chain_config: {}):

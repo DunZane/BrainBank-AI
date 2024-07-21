@@ -6,7 +6,7 @@ from langchain.prompts import (
     ChatPromptTemplate,
 )
 
-from app.routers import get_session_history
+from app.chains.history import get_session_history
 
 
 def build(chain_config: {}):
@@ -95,7 +95,7 @@ def build(chain_config: {}):
         chain,
         get_session_history,
         input_messages_key="user_input",
-        history_messages_key="history"
+        history_messages_key="history",
     )
     return runnable_with_history
 

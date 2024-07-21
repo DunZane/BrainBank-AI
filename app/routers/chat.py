@@ -85,15 +85,16 @@ async def bot(request: BotRequest):
             message_result["user_content"] = message.content
 
     chain_config = {"template": None, "temperature": 0}
+    if message_result["system_content"] != "":
+        chain_config["template"] = message_result["system_content"]
+
     chain = graph_chain.build(chain_config=chain_config)
 
     content = message_result["user_content"]
-    inputs = {"question": content}
-    output = chain.invoke(
-        input=inputs,
-        config={"configurable": {"session_id": request.session_id}}
-    )
-    return {"content": output["answer"]}
+    if request.stream:
+        return stream_response(chain,content,request.session_id)
+    else:
+        return regular_response(chain,content,request.session_id)
 
 
 def regular_response(chain, content: str, session_id: str):
