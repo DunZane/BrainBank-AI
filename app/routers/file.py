@@ -5,11 +5,9 @@ from threading import Thread
 from collections.abc import Generator
 from starlette.responses import StreamingResponse
 
-
 from app import logger
 from app.chains import rag_chain
-from app.model.file import FileRequest,FileSummaryRequest
-
+from app.model.file import FileRequest, FileSummaryRequest
 
 router = APIRouter(
     prefix="/v1",
@@ -39,7 +37,6 @@ async def pdf_bot(request: FileRequest):
     chain_with_history = rag_chain.build(chain_config=chain_config, metadata=metadata)
 
     content = message_result["user_content"]
-    logger.info(f"Received stream: {request.stream}")
     if request.stream:
         return stream_response(chain_with_history, content, request.session_id)
         # return list_response(chain_with_history, content, request.session_id)
@@ -48,8 +45,9 @@ async def pdf_bot(request: FileRequest):
 
 
 @router.post("/pdf-bot")
-async def pdf_summary(request:FileSummaryRequest):
+async def pdf_summary(request: FileSummaryRequest):
     pass
+
 
 def regular_response(chain, content: str, session_id: str):
     """

@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from app.routers import chat, file,ticket
 from fastapi.middleware.cors import CORSMiddleware
 

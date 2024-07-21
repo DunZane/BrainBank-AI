@@ -1,16 +1,19 @@
 from typing import Dict, Any
 
-from app.chains.init import load_llm, load_neo4j_graph, load_embedding
-from app.chains.history import get_session_history
-
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate
 )
-from langchain_core.runnables import RunnableWithMessageHistory, RunnablePassthrough, RunnableParallel
+from langchain_core.runnables import (
+    RunnableWithMessageHistory,
+    RunnablePassthrough,
+    RunnableParallel
+)
 
 from app.chains.retriever.neo4j import Neo4jRetriever
+from app.chains.init import load_llm, load_neo4j_graph, load_embedding
+from app.chains.history import get_session_history
 
 
 def build(chain_config: Dict[str, Any], metadata=Dict[str, Any]):
@@ -37,7 +40,7 @@ def build(chain_config: Dict[str, Any], metadata=Dict[str, Any]):
        Generate concise answers with references sources section of links to 
        relevant StackOverflow questions only at the end of the answer.
        """
-    general_user_template = "Question:```{question}```"
+    general_user_template = "Question:```{user_input}```"
     messages = [
         SystemMessagePromptTemplate.from_template(general_system_template),
         HumanMessagePromptTemplate.from_template(general_user_template),
@@ -48,7 +51,7 @@ def build(chain_config: Dict[str, Any], metadata=Dict[str, Any]):
 
     chain = (
             RunnableParallel({"summaries": retriever,
-                              "question": RunnablePassthrough(),
+                              "user_input": RunnablePassthrough(),
                               "history": RunnablePassthrough()})
             | qa_prompt
             | llm
@@ -57,7 +60,7 @@ def build(chain_config: Dict[str, Any], metadata=Dict[str, Any]):
     chain_with_history = RunnableWithMessageHistory(
         chain,
         get_session_history,
-        input_messages_key="question",
+        input_messages_key="user_input",
         history_messages_key="history",
     )
 
