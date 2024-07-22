@@ -64,7 +64,7 @@ async def title(request: BaseRequest):
             message_result["user_content"] = message.content
 
     chain_config = {"template": None, "temperature": 0}
-    title_chain = llm_chain.build_in_title(chain_config=chain_config)
+    title_chain = llm_chain.build_for_title(chain_config=chain_config)
 
     message_title = title_chain.invoke(input=message_result["user_content"]).content
     return {"title": message_title}

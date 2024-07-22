@@ -6,7 +6,8 @@ from collections.abc import Generator
 from starlette.responses import StreamingResponse
 
 from app import logger
-from app.chains import rag_chain
+from app.chains import rag_chain, llm_chain
+from app.routers.pipeline.summary import PDFSummarizationPipeline
 from app.model.file import FileRequest, FileSummaryRequest
 
 router = APIRouter(
@@ -28,7 +29,7 @@ async def pdf_bot(request: FileRequest):
             message_result["system_content"] = message.content
         elif message.role == "user":
             message_result["user_content"] = message.content
-    chain_config = {"template": None, "temperature": 0}
+    chain_config = {"template": None, "temperature": 0.9}
     if message_result["system_content"] != "":
         chain_config["template"] = message_result["system_content"]
 
@@ -44,9 +45,22 @@ async def pdf_bot(request: FileRequest):
         return regular_response(chain_with_history, content, request.session_id)
 
 
-@router.post("/pdf-bot")
-async def pdf_summary(request: FileSummaryRequest):
-    pass
+@router.post("/pdf-summary")
+def pdf_summary(request: FileSummaryRequest):
+    logger.info(f"Received request: {request}")
+    metadata = {"file_name": request.file_name, "session_id": request.session_id}
+
+    chain_config = {"template": None, "temperature": 0.9}
+    chains = llm_chain.build_for_summary(chain_config=chain_config)
+
+    # 初始化 PDFSummarizationPipeline
+    pipeline = PDFSummarizationPipeline(
+        chains=chains,
+        metadata=metadata,
+    )
+
+    result = pipeline(stream=request.stream)
+    return result
 
 
 def regular_response(chain, content: str, session_id: str):
