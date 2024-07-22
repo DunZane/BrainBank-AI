@@ -15,6 +15,5 @@ class FileRequest(BaseModel):
 class FileSummaryRequest(BaseModel):
     stream: bool = False
     session_id: str
-    file_id: str
-    user_id: str
+    file_name: str
 

@@ -100,7 +100,7 @@ def build(chain_config: {}):
     return runnable_with_history
 
 
-def build_in_title(chain_config: {}):
+def build_for_title(chain_config: {}):
     template = """
     You are an AI assistant tasked with generating a concise and relevant title for a conversation based on the user's initial input. Your goal is to create a title that captures the essence of the conversation's topic or main question.
 
@@ -146,3 +146,89 @@ def build_in_title(chain_config: {}):
     chain = title_prompt | llm
 
     return chain
+
+
+def build_for_summary(chain_config: {}):
+    # Define templates for summarizing text chunks and final summary
+    template01 = """
+    Summarize the key points of  the following text chunk concisely in 2-6 sentences. 
+    {pdf_chunk}
+    Focus on the main ideas and most important information.
+    """
+
+    template02 = """
+    Based on the provided summaries of individual text chunks：
+    {summary_chunks} 
+    
+    create a comprehensive two-part summary of the entire document. Your response should consist of:
+    Overall Summary
+    
+    This summary should:
+    
+    1. Begin with a concise introduction stating the document's main subject and purpose.
+    2. Present the key ideas, arguments, and information in a logical flow.
+    3. Highlight overarching themes or concepts that span multiple sections of the document.
+    4. Provide context where necessary to enhance understanding.
+    5. Conclude with the document's main message or significance.
+    
+    Aim for approximately 500～700 words for this overall summary.
+    
+    Key Highlights
+    
+    Identify and present the most significant points or unique aspects of the document. This section should:
+    
+    1. List 4-6 key highlights or takeaways from the document.
+    2. For each highlight:
+       a. Clearly state the point in a concise sentence or phrase.
+       b. Briefly explain why this point is significant or how it contributes to the document's overall value.
+       c. If applicable, provide a brief supporting example from the original text or in-text evidence, noting that the number of the chunk is not cited.
+    
+    3. Ensure that these highlights represent diverse aspects of the document, such as:
+       - Novel ideas or innovative approaches
+       - Critical findings or conclusions
+       - Unique methodologies or frameworks
+       - Surprising or counterintuitive information
+       - Practical applications or implications
+    
+    Present each highlight as a separate bullet point for clarity. Aim for approximately 30-50 words per highlight.
+    
+    General Guidelines:
+    - Maintain objectivity and accurately reflect the original document's tone and perspective.
+    - Use clear, accessible language while preserving any essential technical terms.
+    - Ensure that the overall summary and highlights complement each other without excessive repetition.
+    
+    Your final output should provide readers with both a comprehensive understanding of the document's content and a quick reference to its most notable aspects.
+    """
+
+    # Create prompt templates with message placeholders
+    prompt01 = ChatPromptTemplate.from_messages(
+        [
+            ("system", template01),
+            ("human", "pdf_chunk"),
+        ]
+    )
+
+    prompt02 = ChatPromptTemplate.from_messages(
+        [
+            ("system", template02),
+            MessagesPlaceholder(variable_name="history"),
+            ("human", "summary_chunks"),
+        ]
+    )
+
+    # Extract LLM configuration and handle potential KeyError
+    temperature = chain_config.get("temperature", 0.7)  # Provide a default temperature if not set
+    llm_config = {"temperature": temperature}
+    llm = load_llm(llm_config)
+
+    # Create chains with history management
+    chain01 = prompt01 | llm
+    chain02 = prompt02 | llm
+    runnable_with_history = RunnableWithMessageHistory(
+        chain02,
+        get_session_history,
+        input_messages_key="summary_chunks",
+        history_messages_key="history",
+    )
+
+    return [chain01, runnable_with_history]
