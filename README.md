@@ -1,2 +1,4 @@
 
-<img src="./doc/2024-05-06-1935.png" style="zoom:200%;" />
+- Business Logic Backend: [Brainbank-AI](https://github.com/DunZane/BrainBank)(build by go-zero)
+- use docker-compose.yaml(under branch `v1`) to deploy `brainbank version1`
+<img src="./doc/2024-05-06-1936.png" style="zoom:200%;" />
